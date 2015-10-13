@@ -19,11 +19,6 @@
 \section{Recap}
 
 \begin{frame}
-  \begin{itemize}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
   \frametitle{Pinhole Camera Model}
   \begin{align*}
     \mathbf{pinhole}[\mathbf{w},\boldsymbol{\Lambda},\boldsymbol{\Omega},
@@ -418,7 +413,7 @@
 
 \begin{frame}
   \frametitle{Discussion}
-  \begin{itemize}
+  \begin{itemize}[<+->]
     \item Very ad hoc algorithm, typical of methods using homogeneous
       coordinates
     \item Can be inaccurate but usually sufficient for an initial guess
@@ -430,7 +425,233 @@
 \end{frame}
 
 \section{Learning intrinsic parameters}
+
+\begin{frame}
+  \frametitle{Learning intrinsic parameters}
+  \begin{align*}
+    \boldsymbol{\hat{\Lambda}} &=
+    \underset{\boldsymbol{\Lambda}}
+    {\operatorname{argmax}} \left[
+    \underset{\boldsymbol{\Omega},\bm{\tau}}
+    {\operatorname{max}} \left[
+      \sum_{i=1}^I \log{\left[
+    \Pr(\mathbf{x}_i|\mathbf{w}_i,\boldsymbol{\Lambda},\boldsymbol{\Omega},
+    \bm{\tau})
+      \right]}
+  \right]\right]
+  \end{align*}
+  \begin{itemize}
+    \item<2-> Coordinate ascent: alternately (1) optimize
+      $\boldsymbol{\Omega}, \bm{\tau}$ for fixed $\boldsymbol{\Lambda}$ and
+      (2) optimize $\boldsymbol{\Lambda}$ for fixed
+      $\boldsymbol{\Omega}, \bm{\tau}$
+    \item<3-> Converges slowly
+    \item<4-> We already have a solution for the first step
+    \item<5-> Second step has an easy solution
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Estimating $\boldsymbol{\Lambda}$}
+  \begin{align*}
+    \boldsymbol{\hat{\Lambda}}
+    &=
+    \underset{\boldsymbol{\Lambda}}
+    {\operatorname{argmax}} \left[
+      \sum_{i=1}^I \log{\left[
+    \Pr(\mathbf{x}_i|\mathbf{w}_i,\boldsymbol{\Lambda},\boldsymbol{\Omega},
+    \bm{\tau})
+      \right]}
+  \right]
+\\
+&=
+    \underset{\boldsymbol{\Lambda}}
+    {\operatorname{argmax}} \left[
+      \sum_{i=1}^I \log{\left[
+          \operatorname{Norm}_{\mathbf{x}_i}
+          \left[
+            \mathbf{pinhole}
+            \left[
+              \mathbf{w}_i,\boldsymbol{\Lambda},\boldsymbol{\Omega},\bm{\tau}
+            \right]
+            ,\sigma^2\mathbf{I}
+          \right]
+      \right]}
+  \right]
+\\
+&=
+    \underset{\boldsymbol{\Lambda}}
+    {\operatorname{argmin}} \left[
+      \sum_{i=1}^I
+      \norm{
+        \mathbf{x}_i-
+            \mathbf{pinhole}
+            \left[
+              \mathbf{w}_i,\boldsymbol{\Lambda},\boldsymbol{\Omega},\bm{\tau}
+            \right]
+          }^2
+  \right]
+\\
+  \end{align*}
+  \begin{itemize}
+    \item<2-> Least squares problem
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \begin{itemize}[<+->]
+    \item $\mathbf{pinhole}[\ldots]$ is linear with respect to
+      $\boldsymbol{\Lambda}$
+    \item Can be written as $\mathbf{A}_i\mathbf{h}$ where
+      $\mathbf{h}=[\phi_x,\gamma,\delta_x,\phi_y,\delta_y]^T$ and
+  \end{itemize}
+  \uncover<2->{
+    {\tiny
+  \begin{align*}
+    \mathbf{A}_i &=
+    \begin{bmatrix}
+      \frac{\omega_{11}u_i+\omega_{12}v_i+\omega_{13}w_i+\tau_x}
+      {\omega_{31}u_i+\omega_{32}v_i+\omega_{33}w_i+\tau_z} &
+      \frac{\omega_{21}u_i+\omega_{22}v_i+\omega_{23}w_i+\tau_x}
+      {\omega_{31}u_i+\omega_{32}v_i+\omega_{33}w_i+\tau_z} &
+      1 & 0 & 0 \\
+      0 & 0 & 0 &
+      \frac{\omega_{21}u_i+\omega_{22}v_i+\omega_{23}w_i+\tau_y}
+      {\omega_{31}u_i+\omega_{32}v_i+\omega_{33}w_i+\tau_z} &
+      1
+    \end{bmatrix}
+  \end{align*}
+  }
+}
+  \begin{itemize}
+    \item<3-> Consequently, problem has the form
+      \begin{align*}
+        \mathbf{\hat{h}} &=
+        \underset{\mathbf{h}}
+    {\operatorname{argmin}} \left[
+      \sum_{i=1}^I
+      \left(\mathbf{A}_i\mathbf{h}-\mathbf{x}_i
+      \right)^T
+      \left(\mathbf{A}_i\mathbf{h}-\mathbf{x}_i
+      \right)
+  \right]
+      \end{align*}
+    \item<4-> Closed form solution
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Discussion}
+  \begin{itemize}[<+->]
+    \item Slow cenvergence
+    \item In practice, perform a few coordinate ascent iterations and
+        then use nonlinear optimization to optimize all parameters          simultaneously
+  \end{itemize}
+\end{frame}
+
 \section{Inferring 3D world points}
+
+\begin{frame}
+  \frametitle{Inferring 3D world points}
+  \begin{align*}
+    \mathbf{\hat{w}} &=
+    \underset{\mathbf{w}}
+    {\operatorname{argmax}} \left[
+      \sum_{j=1}^J \log{\left[
+    \Pr(\mathbf{x}_j|\mathbf{w},\boldsymbol{\Lambda}_j,\boldsymbol{\Omega}_j,
+    \bm{\tau}_j)
+      \right]}
+  \right]
+  \end{align*}
+  \begin{itemize}
+    \item<2-> Need homogeneous coordinates
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Inferring 3D world points}
+  \begin{itemize}[<+->]
+    \item Using the same trick as before, for homogeneous world point
+      $\mathbf{\tilde{w}}$ and the $j$th corresponding homogeneous image point
+      $\mathbf{\tilde{x}}_j$ we have
+      {\small
+          \begin{align*}
+          \begin{bmatrix}
+            (\omega_{31}_j u+\omega_{32}_j v+\omega_{33}_j w+\tau_{zj})x'_j \\
+            (\omega_{31}_j u+\omega_{32}_j v+\omega_{33}_j w+\tau_{zj})y'_j
+          \end{bmatrix} &=
+            \begin{bmatrix}
+              \omega_{11j} & \omega_{12j} & \omega_{13j} & \tau_{xj} \\
+              \omega_{21j} & \omega_{22j} & \omega_{23j} & \tau_{yj}
+            \end{bmatrix}
+            \begin{bmatrix}
+              u \\ v \\ w \\ 1
+            \end{bmatrix}
+        \end{align*}
+      }
+    \item Here $x_j',y_j'$ are normalized image coordinates for image plane
+      $j$
+      \item Rearranging, we get
+        {\small
+        \begin{align*}
+          \begin{bmatrix}
+            \omega_{31j}x_j'-\omega_{11j} &
+            \omega_{32j}x_j'-\omega_{12j} &
+            \omega_{33j}x_j'-\omega_{13j} \\
+            \omega_{31j}y_j'-\omega_{21j} &
+            \omega_{32j}y_j'-\omega_{22j} &
+            \omega_{33j}y_j'-\omega_{23j} \\
+          \end{bmatrix}
+          \begin{bmatrix}
+            u \\ v \\ w
+          \end{bmatrix}
+          &=
+          \begin{bmatrix}
+            \tau_{xj}-\tau_{zj}x_j' \\
+            \tau_{yj}-\tau_{zj}y_j' \\
+          \end{bmatrix}
+        \end{align*}
+      }
+    \item With multiple cameras, this system of equations can be expanded
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Discussion}
+  \begin{itemize}[<+->]
+    \item Again, we use the solution as the initial estimate for a nonlinear
+      optimization procedure
+    \item The method requires the knowledge of corresponding image points
+      $\mathbf{x}_j$
+    \item Extrinsic and intrinsic parameters must also be known
+  \end{itemize}
+\end{frame}
+
 \section{Applications}
+
+\begin{frame}
+  \frametitle{Depth from structured light (Scharstein \& Szeliski, 2003)}
+  \begin{columns}[c]
+    \column{.5\textwidth}
+  \includegraphics[width=1.0\textwidth]{fig/structured.png}
+    \column{.5\textwidth}
+  \includegraphics[width=1.0\textwidth]{fig/structured2.png}
+  \end{columns}
+\begin{itemize}[<+->]
+  \item Projector geometry is modeled by the same equation as the camera
+  \item Each image point receives a unique sequence of black and white values
+  \item Use 3D world point inference to construct a 3D model
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{ProFORMA (Qi Pan, 2009)}
+  \begin{itemize}
+    \item \url{https://www.youtube.com/watch?v=vEOmzjImsVc}
+    \item Does many other things too (feature detection, tracking,
+      correspondence, model building...)
+  \end{itemize}
+\end{frame}
 
 \end{document}
